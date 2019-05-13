@@ -1,0 +1,152 @@
+usermax=31
+pass=study
+ro=$!
+p=$!
+o=$!
+a=a
+b=b
+c=c
+d=d
+e=e
+#/////Menu/////#
+echo "* * * User Creation/Deletion Tool * * *"
+read -p "Which commands would you like to do
+ 1.Create Users
+ 2.Archive Users
+ 3.Delete Users
+ Choice:" choice
+
+if [ $choice -eq 1 ]
+then
+
+groupadd -g 3000 Instructor
+chown -R :Instructor /home
+
+groupadd -g 3001 Student
+chown -R :Student /home
+chmod -R g-w /home
+chmod -R o-x /home
+
+
+read -p "How many users would you like to create: " num
+if [ $num -gt $usermax ]
+then
+        echo "error too many users"
+        exit 1
+fi
+
+if [ $num -lt 1 ]
+then
+        exit 1
+fi
+
+echo "Creating $num users"
+for ((i=1; i<=$num; i++))
+do
+        echo "User $i"
+        read -p "Please enter a username: " username #this prompts the user for a username and saves it the the variable username
+        read -s -p "Please enter a password: " password #this asks for a password and saves it to password, the -s hides the input
+        egrep "^$username" /etc/passwd >testfile.txt #Scans the username of the system and checks
+
+        if [ $? -eq 0 ]; then    #checks the exit status, if user exists it exits the loop
+                echo "$username exists!"
+                exit 1
+        else
+                useradd -m -p $password $username # creates the user home directory and password
+                [ $? -eq 0 ] && echo "User has been added to system!" || echo "Failed to add a user!" # if the user returns false it states the failure
+        fi
+
+        echo "$username" >> del.user
+
+        #/////PARSING/////#
+        echo "Select a group to put user $username into:"
+        until [[ "$ro" == "$a" || "$ro" == "$b" ]]
+        do
+                read -p "[a]Instructor [b]Student: " ro
+        done
+
+        if [ "$ro" == "$a" ]
+        then
+                until [ "$p" == "$pass" ]
+                do
+                                read -p "Enter Admin Passphrase: " p
+                done
+
+                if [ "$p" == "$pass" ]
+                then
+                        usermod -aG Instructor "$username"
+                        echo "User "$username" has been moved to Instructor Group"
+                else
+                        echo "Root permisions denied"
+                        usermod -aG Student "$username"
+                        echo "User "$username" has been moved to Student Group"
+                fi
+
+        else
+                usermod -aG Student "$username"
+                echo "User $username has been moved to Student Group"
+        fi
+        echo
+        ro=$!
+        p=$!
+done
+fi
+
+if [ $choice -eq 2 ]
+then
+#/////ARCHIVING/////#
+mkdir Archived
+dir=/home/ubuntu
+
+for entry in "$search_dir"/home/*
+do
+        if [ "$entry" != "$dir" ]
+       then
+                echo "$entry"
+               tar -cvf "$entry".tar "$entry"
+               mv "$entry".tar /etc/TestFolder/Archived
+        fi
+done
+
+echo "Files Archived!"
+echo "=============================================================="
+ls /etc/TestFolder/Archived
+echo "=============================================================="
+fi
+
+if [ $choice -eq 3 ]
+then
+#/////DELETION/////#
+read -p "What function will you do:?
+1. Single User Deletion
+2. Bulk User Deletion
+Choice: " choice2
+
+if [ $choice2 -eq 1 ]
+then
+        read -p "Enter the user you want to delete: "
+        for USER in $REPLY;
+        do
+                if
+                [ $reply = $user ]
+
+                then
+                        deluser  $USER
+                        rm -r /home/$USER
+                        echo "User $USER deleted"
+                else
+                echo "user does not exist"
+                fi
+        done
+fi
+
+if [ $choice2 -eq 2 ]
+then
+        for user in `cat del.user`
+        do
+                userdel -r $user
+        done
+        echo "Users Deleted"
+fi
+
+fi
